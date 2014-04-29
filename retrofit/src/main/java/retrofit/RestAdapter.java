@@ -395,10 +395,11 @@ public class RestAdapter {
           response = logAndReplaceResponse(url, response, elapsedTime);
         }
 
-        if (responseInterceptor != null) {
-          final ResponseInterceptor.ResponseFacade responseFacade = new ResponseInterceptor.ResponseFacade(response);
+        if (!responseInterceptor.equals(ResponseInterceptor.NONE)) {
+          final ResponseInterceptor.ResponseFacade responseFacade = new ResponseInterceptor.ResponseFacade(response, request);
           response = responseInterceptor.intercept(responseFacade).getNewResponse();
-          if (response.getStatus() == 401) {
+          if (responseFacade.shouldReRunRequestAfter()) {
+            // Rebuild request and execute it
             requestInterceptor.intercept(requestBuilder);
             Request newRequest = requestBuilder.build();
             response = clientProvider.get().execute(newRequest);

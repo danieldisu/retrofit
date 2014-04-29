@@ -2,6 +2,7 @@ package retrofit;
 
 import org.apache.commons.io.IOUtils;
 import retrofit.client.Header;
+import retrofit.client.Request;
 import retrofit.client.Response;
 import retrofit.http.Body;
 import retrofit.mime.TypedByteArray;
@@ -19,17 +20,19 @@ import java.util.List;
 public interface ResponseInterceptor {
   ResponseFacade intercept(ResponseFacade responseFacade);
 
-  boolean shouldRepeatRequestAfterIntercept();
-
   public class ResponseFacade {
 
     private final Response originalResponse;
+    private Request request;
     private Response newResponse;
     private TypedByteArray originalResponseBody = null;
+    private boolean shouldReRunRequestAfterIntercept = false;
 
-    ResponseFacade(Response originalResponse) {
-      this.originalResponse = originalResponse;
-      this.newResponse = new Response(originalResponse.getUrl(), originalResponse.getStatus(), originalResponse.getReason(), originalResponse.getHeaders(), getOriginalResponseBody());
+    ResponseFacade(Response originalResponse, Request request) {
+      final Response originalResponseCopy = new Response(originalResponse.getUrl(), originalResponse.getStatus(), originalResponse.getReason(), originalResponse.getHeaders(), getOriginalResponseBody(originalResponse));
+      this.originalResponse = originalResponseCopy;
+      this.request = request;
+      this.newResponse = originalResponseCopy;
     }
 
     private void changeResponseBody(String newBody) {
@@ -49,11 +52,7 @@ public interface ResponseInterceptor {
       this.newResponse = new Response(newResponse.getUrl(), newResponse.getStatus(), newResponse.getReason(), newResponse.getHeaders(), newResponse.getBody());
     }
 
-    public TypedByteArray getOriginalResponseBody() {
-      if(originalResponseBody != null){
-        return originalResponseBody;
-      }
-
+    public TypedByteArray getOriginalResponseBody(Response originalResponse) {
       TypedByteArray newBody = null;
       InputStream is = null;
       try {
@@ -74,6 +73,22 @@ public interface ResponseInterceptor {
     protected Response getNewResponse() {
       return this.newResponse;
     }
+
+    public boolean shouldReRunRequestAfter() {
+      return shouldReRunRequestAfterIntercept;
+    }
+
+    public void setShouldReRunRequestAfterIntercept(boolean shouldReRunRequestAfterIntercept) {
+      this.shouldReRunRequestAfterIntercept = shouldReRunRequestAfterIntercept;
+    }
+
+    public Response getOriginalResponse() {
+      return originalResponse;
+    }
+
+    public Request getRequest() {
+      return request;
+    }
   }
 
   /**
@@ -83,10 +98,6 @@ public interface ResponseInterceptor {
     @Override
     public ResponseFacade intercept(ResponseFacade responseFacade) {
       return responseFacade;
-    }
-
-    @Override public boolean shouldRepeatRequestAfterIntercept() {
-      return false;
     }
   };
 }
